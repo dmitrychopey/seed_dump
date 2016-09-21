@@ -5,7 +5,7 @@ class SeedDump
     def dump(records, options = {})
       return nil if records.count == 0
 
-      io = open_io(options)
+      io = open_io(records, options)
 
       write_records_to_io(records, io, options)
 
@@ -17,11 +17,11 @@ class SeedDump
 
     def dump_record(record, options)
       attribute_strings = []
-
       # We select only string attribute names to avoid conflict
       # with the composite_primary_keys gem (it returns composite
       # primary key attribute names as hashes).
       record.attributes.select {|key| key.is_a?(String) }.each do |attribute, value|
+        value = anonymize(attribute, value) if options[:anonymize][record.class.to_s.downcase]&.include?(attribute)
         attribute_strings << dump_attribute_new(attribute, value, options) unless options[:exclude].include?(attribute.to_sym)
       end
 
@@ -55,13 +55,14 @@ class SeedDump
       "[#{from},#{to}#{object.exclude_end? ? ')' : ']'}"
     end
 
-    def open_io(options)
+    def open_io(records, options)
       if options[:file].present?
         mode = options[:append] ? 'a+' : 'w+'
-
         File.open(options[:file], mode)
       else
-        StringIO.new('', 'w+')
+        directory = "db/seeds"
+        Dir.mkdir(directory) unless File.exists?(directory)
+        File.new("#{directory}/#{records}.rb", 'w+')
       end
     end
 
@@ -80,8 +81,11 @@ class SeedDump
                            else
                              :enumerable_enumeration
                            end
+      puts "#{records} records number: #{records.count}"
 
-      send(enumeration_method, records, io, options) do |record_strings, last_batch|
+      progressbar = ProgressBar.create(title: "[#{records}]", format:'%t 8%bD %P%%', starting_at: 0, total: records.count)
+
+      send(enumeration_method, records, io, progressbar, options) do |record_strings, last_batch|
         io.write(record_strings.join(",\n  "))
 
         io.write(",\n  ") unless last_batch
@@ -117,5 +121,18 @@ class SeedDump
       end
     end
 
+    def anonymize(attribute, value)
+      if %w(email lead_emails unconfirmed_email).include?(attribute)
+        value.split(',').map{|e| e.gsub(Devise.email_regexp) {"#{encode_string($1, 'x')}@#{$2}#{$3}"} }.join(',') if value.present?
+      elsif %w(phone phone_number mobile_phone virtual_phone office_phone).include?(attribute)
+        encode_string(value, '0')
+      else
+        encode_string(value, 'x')
+      end
+    end
+
+    def encode_string(string, symbol)
+      string&.gsub(/(.)./) {"#{$1}#{symbol}"}
+    end
   end
 end

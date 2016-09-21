@@ -1,7 +1,7 @@
 class SeedDump
   module DumpMethods
     module Enumeration
-      def active_record_enumeration(records, io, options)
+      def active_record_enumeration(records, io, progressbar, options)
         # If the records don't already have an order,
         # order them by primary key ascending.
         if !records.respond_to?(:arel) || records.arel.orders.blank?
@@ -26,6 +26,7 @@ class SeedDump
           # Loop through the records of the current batch
           records.offset((batch_number - 1) * batch_size).limit(cur_batch_size).each do |record|
             record_strings << dump_record(record, options)
+            progressbar.increment
           end
 
           yield record_strings, last_batch

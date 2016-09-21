@@ -2,6 +2,7 @@ source 'https://rubygems.org'
 
 gem 'activesupport', '>= 4'
 gem 'activerecord', '>= 4'
+gem 'ruby-progressbar', '>= 1.8.1'
 
 group :development, :test do
   gem 'byebug', '~> 2.0'

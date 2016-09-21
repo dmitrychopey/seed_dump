@@ -40,6 +40,10 @@ User.create!([
   { password: "234567", username: "test_2" }
 ])
 ```
+Dumb and anonymize some data
+```sh
+  $ rake db:seed:dump MODELS_EXCLUDE='BaseLog, MailLog' ANONYMIZE='{"company":["email","lead_emails"],"user":["email","unconfirmed_email"]}'
+```
 
 Dump only data from the users table and dump a maximum of 1 record:
 ```sh
